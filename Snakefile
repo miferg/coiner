@@ -3,11 +3,8 @@ import glob
 import os
 import pathlib
 
-#modeldir = Path(config["modeldir"]) # dir with models ending with .cm
-querydir = Path(config["querydir"]) # dir with assemblies ending with .fna
-#LOCBASE = [x.split('__1_Custom_')[0] for x in querydir.iterdir() if x.is_file() and x.suffix in [".gz"]]
+querydir = Path(config["querydir"])
 LOCBASE = [x.split('__1_Custom_')[0] for x in os.listdir(querydir) if x.endswith('fastq.gz')]
-#MODELSBASE = [x.stem for x in modeldir.iterdir() if x.is_file() and x.suffix in [".cm"]]
 outdir = "process_out/"
 
 rule all:
@@ -15,12 +12,11 @@ rule all:
         expand(outdir + "merged/{lbase}.fastq.gz", lbase=LOCBASE),
         expand(outdir + "merged/{lbase}.fna", lbase=LOCBASE),
         expand(outdir + "denoised/{lbase}.derep.fna", lbase=LOCBASE),
-        expand(outdir + "denoised/{lbase}.deno.fna", lbase=LOCBASE)
-        #expand(outdir + "extracted/{fnaf}_{cmodel}.fna", fnaf=FNABASE, cmodel=MODELSBASE),
-        #expand(outdir + "m8/{fnaf}_{cmodel}.m8", fnaf=FNABASE, cmodel=MODELSBASE),
-        #outdir + "m8/merged.m8",
-        #outdir + "cmsearch_summary.tab",
-        #outdir + "cmsearch_summary.tsv"
+        expand(outdir + "denoised/{lbase}.deno.fna", lbase=LOCBASE),
+        expand(outdir + "denoised/{lbase}.nonchimeras.fna", lbase=LOCBASE),
+        str(outdir) + "swarm/atlascoi.fna",
+        str(outdir) + "swarm/atlascoi.derep.fna",
+        str(outdir) + "swarm/atlascoi.swarm13.fna"
 
 rule run_fastp:
    # filter, trim and merge pairs
@@ -82,5 +78,65 @@ rule denoise:
         """
         vsearch --cluster_unoise {input} --centroids {output[0]} --sizein --sizeout --minsize 2 --uc {output[1]} --threads 4
         """
+
+rule uchime:
+   # detect and remove chimeras using de novo approach
+    conda:
+        "snakes/vsearch.yaml"
+    input:
+        str(outdir) + "denoised/{lbase}.deno.fna"
+    output:
+        str(outdir) + "denoised/{lbase}.nonchimeras.fna"
+    threads: 4
+    shell:
+        """
+        vsearch --uchime_denovo {input} --nonchimeras {output[0]} --threads 4
+        """
+
+rule merge_nonchimeras:
+   # merge all nonchimeras
+    input:
+        expand(outdir + "denoised/{lbase}.nonchimeras.fna", lbase=LOCBASE)
+    output:
+        str(outdir) + "swarm/atlascoi.fna"
+    params:
+        str(outdir) + "denoised/"
+    shell:
+        """
+        cat {params}*.nonchimeras.fna > {output}
+        """
+
+rule dereplicate_for_swarm:
+   # dereplicate nonchimeras to be able to run swarm
+    conda:
+        "snakes/vsearch.yaml"
+    input:
+        str(outdir) + "swarm/atlascoi.fna"
+    output:
+        str(outdir) + "swarm/atlascoi.derep.fna",
+        str(outdir) + "swarm/atlascoi.derep.uc"
+    threads: 4
+    shell:
+        """
+        vsearch --derep_fulllength {input} --output {output[0]} --sizein --sizeout --uc {output[1]} --threads 4
+        """
+
+rule swarm:
+   # clustering
+    conda:
+        "snakes/swarm.yaml"
+    input:
+        str(outdir) + "swarm/atlascoi.derep.fna"
+    output:
+        str(outdir) + "swarm/atlascoi.swarm_out.txt",
+        str(outdir) + "swarm/atlascoi.swarm13.fna"
+    threads: 8
+    shell:
+        """
+        swarm  -t 8 -d 13 {input} -o {output[0]} -z --seeds {output[1]}
+        """
+
+
+
 
 # END
