@@ -1,10 +1,6 @@
 #!/usr/bin/env python
 
 import sys
-
-# obtener archivo fasta y renombrar secuencias
-
-import sys
 import os
 import gzip
 
