@@ -5,7 +5,8 @@ import pathlib
 
 querydir = Path(config["querydir"])
 outdir = Path(config["outdir"])
-LOCBASE = [x.split('__1_Custom_')[0] for x in os.listdir(querydir) if x.endswith('fastq.gz')]
+RAWLOCBASE = [x.split('__1_Custom_')[0] for x in os.listdir(querydir) if x.endswith('fastq.gz')]
+LOCBASE = [x.split('_')[0] for x in os.listdir(querydir) if x.endswith('fastq.gz')]
 
 rule all:
     input:
@@ -20,15 +21,28 @@ rule all:
         str(outdir) + "/swarm/atlascoi.derep.fna",
         str(outdir) + "/swarm/atlascoi.swarm13.fna",
         expand(str(outdir) + "/annot/ac_slice_{slice_num}.btout", slice_num=range(1, 11)),
-        str(outdir) + "/annot/atlascoi.btout"
+        str(outdir) + "/annot/atlascoi.btout",
+        str(outdir) + "/atlascoi_otu.tsv"
+
+rule format_read_names:
+    input:
+        expand(str(querydir) + "/{rlbase}__1_Custom_1.fastq.gz", lbase=RAWLOCBASE),
+        expand(str(querydir) + "/{rlbase}__1_Custom_2.fastq.gz", lbase=RAWLOCBASE)
+    output:
+        str(outdir) + "/reads/{lbase}_1.fastq.gz",
+        str(outdir) + "/reads/{lbase}_2.fastq.gz"
+    shell:
+        """
+        
+        """
 
 rule run_cutadapt:
    # remove primer sequences
     conda:
         "snakes/cutadapt.yaml"
     input:
-        str(querydir) + "/{lbase}__1_Custom_1.fastq.gz",
-        str(querydir) + "/{lbase}__1_Custom_2.fastq.gz"
+        str(outdir) + "/reads/{lbase}_1.fastq.gz",
+        str(outdir) + "/reads/{lbase}_2.fastq.gz"
     output:
         str(outdir) + "/filtered/{lbase}.noprim.1.fastq.gz",
         str(outdir) + "/filtered/{lbase}.noprim.2.fastq.gz",
@@ -223,6 +237,7 @@ rule blast:
         """
         blastn -db {params.db} -query {input[0]} -outfmt 6 -max_target_seqs 5 -evalue 1e-5 -num_threads 4 -out {output}
         """
+
 rule merge_blast:
     # merge blast output into single table
     input:
@@ -236,5 +251,17 @@ rule merge_blast:
         cat {params}/ac_slice_*.btout > {output}
         """
 
+rule merge_blast:
+    # merge blast output into single table
+    input:
+        expand(str(outdir) + "/annot/ac_slice_{slice_num}.btout", slice_num=range(1, 11))
+    output:
+        str(outdir) + "/annot/atlascoi.btout"
+    params:
+       str(outdir) + "/annot"
+    shell:
+        """
+        cat {params}/ac_slice_*.btout > {output}
+        """
 
 # END

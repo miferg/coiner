@@ -50,6 +50,6 @@ def divide_multifasta(input_file, output_prefix, num_slices=10):
 
         print(f'Created {output_file} with sequences {start_index + 1} to {end_index}')
 
-# Example usage
+# main
 if __name__ == "__main__":
     divide_multifasta(infilename, outfilepref)
