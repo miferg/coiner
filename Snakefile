@@ -5,8 +5,7 @@ import pathlib
 
 querydir = Path(config["querydir"])
 outdir = Path(config["outdir"])
-RAWLOCBASE = [x.split('__1_Custom_')[0] for x in os.listdir(querydir) if x.endswith('fastq.gz')]
-LOCBASE = [x.split('_')[0] for x in os.listdir(querydir) if x.endswith('fastq.gz')]
+LOCBASE = [x.split('__1_Custom_')[0] for x in os.listdir(querydir) if x.endswith('fastq.gz')]
 
 rule all:
     input:
@@ -24,17 +23,6 @@ rule all:
         str(outdir) + "/annot/atlascoi.btout",
         str(outdir) + "/atlascoi_otu.tsv"
 
-rule format_read_names:
-    input:
-        expand(str(querydir) + "/{rlbase}__1_Custom_1.fastq.gz", lbase=RAWLOCBASE),
-        expand(str(querydir) + "/{rlbase}__1_Custom_2.fastq.gz", lbase=RAWLOCBASE)
-    output:
-        str(outdir) + "/reads/{lbase}_1.fastq.gz",
-        str(outdir) + "/reads/{lbase}_2.fastq.gz"
-    shell:
-        """
-        
-        """
 
 rule run_cutadapt:
    # remove primer sequences
@@ -251,17 +239,20 @@ rule merge_blast:
         cat {params}/ac_slice_*.btout > {output}
         """
 
-rule merge_blast:
-    # merge blast output into single table
+rule build_otu_table:
+    # build otu count table based on swarm output and dereplication
+    conda:
+        "snakes/coiner_pylibs.yaml"
     input:
-        expand(str(outdir) + "/annot/ac_slice_{slice_num}.btout", slice_num=range(1, 11))
+        str(outdir) + "/swarm/atlascoi.derep.uc",
+        str(outdir) + "/swarm/atlascoi.swarm_out.txt",
     output:
-        str(outdir) + "/annot/atlascoi.btout"
+        str(outdir) + "/atlascoi_otu.tsv"
     params:
-       str(outdir) + "/annot"
+       str(outdir) + "/atlascoi"
     shell:
         """
-        cat {params}/ac_slice_*.btout > {output}
+        python snakes/build_otu_table.py {input[0]} {input[1]} {params}
         """
 
 # END
