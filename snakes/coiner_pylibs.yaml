@@ -10,7 +10,7 @@ dependencies:
   - blas=1.0=openblas
   - bottleneck=1.4.2=py313hf0014fa_0
   - bzip2=1.0.8=h5eee18b_6
-  - ca-certificates=2024.12.31=h06a4308_0
+  - ca-certificates=2025.2.25=h06a4308_0
   - expat=2.6.4=h6a678d5_0
   - ld_impl_linux-64=2.40=h12ee557_0
   - libffi=3.4.4=h6a678d5_1
@@ -43,3 +43,5 @@ dependencies:
   - wheel=0.44.0=py313h06a4308_0
   - xz=5.4.6=h5eee18b_1
   - zlib=1.2.13=h5eee18b_1
+  - pip:
+      - biopython==1.85
