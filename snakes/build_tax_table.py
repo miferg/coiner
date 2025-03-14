@@ -28,16 +28,23 @@ def get_sequence_lengths_with_description(fasta_file):
         seq_lengths[record.description] = len(record.seq)
     
     return seq_lengths
+
     
+# PARAMS
+
+# empiric values of pident after analyzing the full Midori2 database
+# quantile 0.1 of all minimal pidents per taxa
+# values compared with https://doi.org/10.1673/031.012.1601 table 3
+
+gminpid_d = {'division': 70.3828,
+ 'class': 71.97579,
+ 'order': 74.2809,
+ 'family':  77.728,
+ 'genus': 83.1159,
+ 'species': 95} # based on results by idem, rounded down
+
 
 # MAIN
-
-gminpid_d = {'division': 76.66134848484849, # empiric values after analyzing the full Midori2 database, aerage of all minimal pidents per taxa
- 'class': 80.44386608595494,
- 'order': 83.15110829427071,
- 'family': 85.52851374738837,
- 'genus': 90.71593556734628,
- 'species': 94} # exception, value found in https://doi.org/10.1673/031.012.1601 rounded up
 
 # load blast output
 
@@ -81,7 +88,7 @@ for crank in tax_d.keys():
 
 # extract taxonomy from blast table
 
-atlasbest['seed'] = atlasbest['qseqid']
+atlasbest['seed'] = [crow['qseqid'].split(';')[0] for ci, crow in atlasbest.iterrows()]
 tax_tab = atlasbest[['seed', 'division', 'class', 'order', 'family', 'genus', 'species']]
 
 # write

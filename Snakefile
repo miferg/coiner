@@ -21,7 +21,8 @@ rule all:
         str(outdir) + "/swarm/atlascoi.swarm13.fna",
         expand(str(outdir) + "/annot/ac_slice_{slice_num}.btout", slice_num=range(1, 11)),
         str(outdir) + "/annot/atlascoi.btout",
-        str(outdir) + "/atlascoi_otu.tsv"
+        str(outdir) + "/atlascoi_otu.tsv",
+        str(outdir) + "/atlascoi_tax.tsv"
 
 
 rule run_cutadapt:
@@ -29,8 +30,8 @@ rule run_cutadapt:
     conda:
         "snakes/cutadapt.yaml"
     input:
-        str(outdir) + "/reads/{lbase}_1.fastq.gz",
-        str(outdir) + "/reads/{lbase}_2.fastq.gz"
+        str(querydir) + "/{lbase}_1.fastq.gz",
+        str(querydir) + "/{lbase}_2.fastq.gz"
     output:
         str(outdir) + "/filtered/{lbase}.noprim.1.fastq.gz",
         str(outdir) + "/filtered/{lbase}.noprim.2.fastq.gz",
@@ -253,6 +254,23 @@ rule build_otu_table:
     shell:
         """
         python snakes/build_otu_table.py {input[0]} {input[1]} {params}
+        """
+
+
+rule build_tax_table:
+    # build tax table based on blast output, seed lengths and cutoffs
+    conda:
+        "snakes/coiner_pylibs.yaml"
+    input:
+        str(outdir) + "/annot/atlascoi.btout",
+        str(outdir) + "/swarm/atlascoi.swarm13.fna",
+    output:
+        str(outdir) + "/atlascoi_tax.tsv"
+    params:
+       str(outdir) + "/atlascoi"
+    shell:
+        """
+        python snakes/build_tax_table.py {input[0]} {input[1]} {params}
         """
 
 # END
