@@ -15,6 +15,7 @@ rule all:
         expand(str(outdir) + "/filtered/{lbase}.noprim.2.fastq.gz", lbase=LOCBASE),
         expand(str(outdir) + "/merged/{lbase}.fastq.gz", lbase=LOCBASE),
         expand(str(outdir) + "/merged/{lbase}.fna", lbase=LOCBASE),
+        expand(str(outdir) + "/merged/{lbase}.oriented.fna", lbase=LOCBASE),
         expand(str(outdir) + "/denoised/{lbase}.derep.fna", lbase=LOCBASE),
         expand(str(outdir) + "/denoised/{lbase}.deno.fna", lbase=LOCBASE),
         expand(str(outdir) + "/denoised/{lbase}.nonchimeras.fna", lbase=LOCBASE),
@@ -24,7 +25,9 @@ rule all:
         expand(str(outdir) + "/annot/ac_slice_{slice_num}.btout", slice_num=range(1, 11)),
         str(outdir) + "/annot/coiner.btout",
         str(outdir) + "/coiner_otu.tsv",
-        str(outdir) + "/coiner_tax.tsv"
+        str(outdir) + "/coiner_tax.tsv",
+        str(outdir) + "/coiner.fna",
+        str(outdir) + "/coiner.sintax.tsv"
 
 
 rule run_cutadapt:
@@ -73,20 +76,35 @@ rule fastq2fasta_renam:
         """
         python snakes/fastq2fasta_renam.py {input}  {output}
         """
-        
+
+rule orient:
+   # orient sequences using the ref db
+    conda:
+        "snakes/vsearch.yaml"
+    input:
+        str(outdir) + "/merged/{lbase}.fna",
+        str(outdir) + "/annot/MIDORI2_LONGEST_NUC_SP_GB263_CO1_BLAST.fasta"
+    output:
+        str(outdir) + "/merged/{lbase}.oriented.fna",
+    threads: cthreads
+    shell:
+        """
+        vsearch --orient {input[0]} --db {input[1]} --fastaout {output} 
+        """
+
 rule dereplicate:
    # start the clustering by removing redundancy
     conda:
         "snakes/vsearch.yaml"
     input:
-        str(outdir) + "/merged/{lbase}.fna"
+        str(outdir) + "/merged/{lbase}.oriented.fna"
     output:
         str(outdir) + "/denoised/{lbase}.derep.fna",
         str(outdir) + "/denoised/{lbase}.derep.uc"
     threads: cthreads
     shell:
         """
-        vsearch --derep_fulllength {input} --output {output[0]} --sizeout --uc {output[1]} --threads {threads}
+        vsearch --derep_fulllength {input} --output {output[0]} --sizeout --uc {output[1]}
         """
 
 rule denoise:
@@ -274,6 +292,43 @@ rule build_tax_table:
     shell:
         """
         python snakes/build_tax_table.py {input[0]} {input[1]} {params}
+        """
+
+rule get_fna_representatives:
+    # get a copy with clean names from cluster representatives
+    input:
+        str(outdir) + "/swarm/coiner.swarm13.fna",
+    output:
+        str(outdir) + "/coiner.fna"
+    shell:
+        """
+        awk -F";" '{{print $1}}' {input} > {output}
+        """
+
+rule get_sintax_db:
+   # download sintax database
+    output:
+        str(outdir) + "/sintax/MIDORI2_LONGEST_NUC_SP_GB264_CO1_SINTAX.fasta"
+    params:
+        str(outdir) +'/sintax'
+    shell:
+        """
+        wget --directory-prefix={params} https://www.reference-midori.info/download/Databases/GenBank264_2024-12-14/SINTAX_sp/longest/MIDORI2_LONGEST_NUC_SP_GB264_CO1_SINTAX.fasta.gz && gunzip {params}/MIDORI2_LONGEST_NUC_SP_GB264_CO1_SINTAX.fasta.gz
+        """
+
+rule sintax:
+    # assign taxonomy using nucleotide composition. Cutoff proposed in https://doi.org/10.1101/074161
+    conda:
+        "snakes/vsearch.yaml"
+    input:
+        str(outdir) + "/coiner.fna",
+        str(outdir) + "/sintax/MIDORI2_LONGEST_NUC_SP_GB264_CO1_SINTAX.fasta"
+    output:
+        str(outdir) + "/coiner.sintax.tsv"
+    threads: cthreads
+    shell:
+        """
+        vsearch --sintax {input[0]} --db {input[1]} --sintax_cutoff 0.8 --tabbedout {output} --threads {threads}
         """
 
 # END
