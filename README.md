@@ -16,7 +16,7 @@ All dependencies will be installed with conda when the pipeline runs for the fir
 
 # usage
 
-Store all your fasta files in a same directory. Files must be paired fastq files.
+Store all your fastq files in a same directory. Files must be paired fastq files.
 
 Example:
 
