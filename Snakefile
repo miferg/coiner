@@ -22,13 +22,19 @@ rule all:
         str(outdir) + "/swarm/coiner.fna",
         str(outdir) + "/swarm/coiner.derep.fna",
         str(outdir) + "/swarm/coiner.swarm13.fna",
-        expand(str(outdir) + "/annot/ac_slice_{slice_num}.btout", slice_num=range(1, 11)),
-        str(outdir) + "/annot/coiner.btout",
         str(outdir) + "/coiner_otu.tsv",
-        str(outdir) + "/coiner_tax.tsv",
         str(outdir) + "/coiner.fna",
-        str(outdir) + "/coiner.sintax.tsv"
 
+rule get_annot_db:
+   # download coi reference database
+    output:
+        str(outdir) + "/annot/eKOI_ver1.fasta"
+    params:
+        str(outdir) +'/annot'
+    shell:
+        """
+        wget --directory-prefix={params} https://github.com/rubenmiguens/eKOI_taxonomy_database/raw/main/eKOI_ver1.fasta
+        """
 
 rule run_cutadapt:
    # remove primer sequences
@@ -83,7 +89,7 @@ rule orient:
         "snakes/vsearch.yaml"
     input:
         str(outdir) + "/merged/{lbase}.fna",
-        str(outdir) + "/annot/MIDORI2_LONGEST_NUC_SP_GB263_CO1_BLAST.fasta"
+        str(outdir) + "/annot/eKOI_ver1.fasta"
     output:
         str(outdir) + "/merged/{lbase}.oriented.fna",
     threads: cthreads
@@ -101,7 +107,6 @@ rule dereplicate:
     output:
         str(outdir) + "/denoised/{lbase}.derep.fna",
         str(outdir) + "/denoised/{lbase}.derep.uc"
-    threads: cthreads
     shell:
         """
         vsearch --derep_fulllength {input} --output {output[0]} --sizeout --uc {output[1]}
@@ -158,10 +163,9 @@ rule dereplicate_for_swarm:
     output:
         str(outdir) + "/swarm/coiner.derep.fna",
         str(outdir) + "/swarm/coiner.derep.uc"
-    threads: cthreads
     shell:
         """
-        vsearch --derep_fulllength {input} --output {output[0]} --sizein --sizeout --uc {output[1]} --threads {threads}
+        vsearch --derep_fulllength {input} --output {output[0]} --sizein --sizeout --uc {output[1]}
         """
 
 rule swarm:
@@ -177,88 +181,6 @@ rule swarm:
     shell:
         """
         swarm  -t {threads} -d 13 {input} -o {output[0]} -z --seeds {output[1]}
-        """
-
-rule get_annot_db:
-   # download coi reference database
-    output:
-        str(outdir) + "/annot/MIDORI2_LONGEST_NUC_SP_GB263_CO1_BLAST.fasta.zip"
-    params:
-        str(outdir) +'/annot'
-    shell:
-        """
-        wget --directory-prefix={params} https://www.reference-midori.info/download/Databases/GenBank263_2024-10-13/BLAST_sp/longest/fasta/MIDORI2_LONGEST_NUC_SP_GB263_CO1_BLAST.fasta.zip
-        """
-
-rule unzip_annot_db:
-   # download coi reference database
-    input:
-        str(outdir) + "/annot/MIDORI2_LONGEST_NUC_SP_GB263_CO1_BLAST.fasta.zip"
-    output:
-        str(outdir) + "/annot/MIDORI2_LONGEST_NUC_SP_GB263_CO1_BLAST.fasta"
-    params:
-        str(outdir) +'/annot'
-    shell:
-        """
-        unzip {params}/MIDORI2_LONGEST_NUC_SP_GB263_CO1_BLAST.fasta.zip -d {params}
-        """
-
-rule build_bl_db:
-   # build bast db
-    conda:
-        "snakes/blast.yaml"
-    input:
-        str(outdir) + "/annot/MIDORI2_LONGEST_NUC_SP_GB263_CO1_BLAST.fasta"
-    output:
-        str(outdir) + "/annot/midori.ndb"
-    params:
-        str(outdir) +'/annot'
-    shell:
-        """
-        makeblastdb -in {input} -dbtype 'nucl' -out {params}/midori
-        """
-
-rule split_fasta:
-    # split query fasta to speed up the blast search
-    input:
-        str(outdir) + "/swarm/coiner.swarm13.fna"
-    output:
-        expand(str(outdir) + "/annot/ac_slice_{slice_num}.fasta", slice_num=range(1, 11))
-    params:
-        str(outdir) + "/annot"
-    shell:
-        """
-        python3 snakes/slice_fasta.py {input} {params}/ac
-        """
-
-rule blast:
-    # run blast searches
-    conda:
-        "snakes/blast.yaml"
-    input:
-        str(outdir) + "/annot/ac_slice_{slice_num}.fasta",
-        str(outdir) + "/annot/midori.ndb"
-    output:
-        str(outdir) + "/annot/ac_slice_{slice_num}.btout"
-    params:
-        db=str(outdir) + "/annot/midori"
-    threads: cthreads
-    shell:
-        """
-        blastn -db {params.db} -query {input[0]} -outfmt 6 -max_target_seqs 5 -evalue 1e-5 -num_threads {threads} -out {output}
-        """
-
-rule merge_blast:
-    # merge blast output into single table
-    input:
-        expand(str(outdir) + "/annot/ac_slice_{slice_num}.btout", slice_num=range(1, 11))
-    output:
-        str(outdir) + "/annot/coiner.btout"
-    params:
-       str(outdir) + "/annot"
-    shell:
-        """
-        cat {params}/ac_slice_*.btout > {output}
         """
 
 rule build_otu_table:
@@ -277,23 +199,6 @@ rule build_otu_table:
         python snakes/build_otu_table.py {input[0]} {input[1]} {params}
         """
 
-
-rule build_tax_table:
-    # build tax table based on blast output, seed lengths and cutoffs
-    conda:
-        "snakes/coiner_pylibs.yaml"
-    input:
-        str(outdir) + "/annot/coiner.btout",
-        str(outdir) + "/swarm/coiner.swarm13.fna",
-    output:
-        str(outdir) + "/coiner_tax.tsv"
-    params:
-       str(outdir) + "/coiner"
-    shell:
-        """
-        python snakes/build_tax_table.py {input[0]} {input[1]} {params}
-        """
-
 rule get_fna_representatives:
     # get a copy with clean names from cluster representatives
     input:
@@ -303,32 +208,6 @@ rule get_fna_representatives:
     shell:
         """
         awk -F";" '{{print $1}}' {input} > {output}
-        """
-
-rule get_sintax_db:
-   # download sintax database
-    output:
-        str(outdir) + "/sintax/MIDORI2_LONGEST_NUC_SP_GB264_CO1_SINTAX.fasta"
-    params:
-        str(outdir) +'/sintax'
-    shell:
-        """
-        wget --directory-prefix={params} https://www.reference-midori.info/download/Databases/GenBank264_2024-12-14/SINTAX_sp/longest/MIDORI2_LONGEST_NUC_SP_GB264_CO1_SINTAX.fasta.gz && gunzip {params}/MIDORI2_LONGEST_NUC_SP_GB264_CO1_SINTAX.fasta.gz
-        """
-
-rule sintax:
-    # assign taxonomy using nucleotide composition. Cutoff proposed in https://doi.org/10.1101/074161
-    conda:
-        "snakes/vsearch.yaml"
-    input:
-        str(outdir) + "/coiner.fna",
-        str(outdir) + "/sintax/MIDORI2_LONGEST_NUC_SP_GB264_CO1_SINTAX.fasta"
-    output:
-        str(outdir) + "/coiner.sintax.tsv"
-    threads: cthreads
-    shell:
-        """
-        vsearch --sintax {input[0]} --db {input[1]} --sintax_cutoff 0.8 --tabbedout {output} --threads {threads}
         """
 
 # END
