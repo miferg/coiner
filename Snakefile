@@ -124,7 +124,7 @@ rule denoise:
     threads: cthreads
     shell:
         """
-        vsearch --cluster_unoise {input} --centroids {output[0]} --sizein --sizeout --minsize 2 --uc {output[1]} --threads {threads}
+        vsearch --cluster_unoise {input} --centroids {output[0]} --sizein --sizeout --minsize 8 --uc {output[1]} --threads {threads}
         """
 
 rule uchime:
