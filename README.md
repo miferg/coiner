@@ -8,7 +8,7 @@
 
 The pipeline processes paired-end FASTQ files through quality filtering, merging, sequence orientation, and denoising (UNOISE3), culminating in OTU clustering via **Swarm**. It automatically handles the download of the **eKOI** reference database for sequence orientation. 
 
-For post-processing, we recommend using the `DARN` (https://github.com/hariszaf/darn) pipeline to discard non-eukaryotic sequences, and then the `coiannot` (https://github.com/miferg/coiannot) pipeline to perform the taxonomic annotation.
+For post-processing, we recommend using the `DARN` (https://github.com/hariszaf/darn) pipeline to discard non-eukaryotic sequences.
 
 
 
