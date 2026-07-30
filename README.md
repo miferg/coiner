@@ -20,7 +20,7 @@ For post-processing, we recommend using the `DARN` (https://github.com/hariszaf/
 
 1.  **Clone the repository:**
     ```bash
-    git clone [https://github.com/miferg/coiner.git](https://github.com/miferg/coiner.git)
+    git clone https://github.com/miferg/coiner.git
     cd coiner
     ```
 
