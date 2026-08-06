@@ -2,7 +2,7 @@
 
 [![Snakemake](https://img.shields.io/badge/snakemake-≥7.0-brightgreen.svg)](https://snakemake.github.io)
 [![Conda](https://img.shields.io/badge/conda-managed-green.svg)](https://docs.conda.io/en/latest/miniconda.html)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: MIT](https://img.shields.io/badge/License-CC-yellow.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0)
 
 **coiner** is a metabarcoding pipeline designed for the processing of **COI (Cytochrome c oxidase subunit I)** amplicon sequences.
 
