@@ -135,10 +135,9 @@ rule uchime:
         str(outdir) + "/denoised/{lbase}.deno.fna"
     output:
         str(outdir) + "/denoised/{lbase}.nonchimeras.fna"
-    threads: cthreads
     shell:
         """
-        vsearch --uchime_denovo {input} --nonchimeras {output[0]} --threads {threads}
+        vsearch --uchime_denovo {input} --nonchimeras {output[0]}
         """
 
 rule merge_nonchimeras:
