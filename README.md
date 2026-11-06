@@ -115,7 +115,12 @@ coiner_out/
 ```
 
 -----
+## 📄 Citation
 
-## 📄 License
+- Romero, M. F. (2026). miferg/coiner: coiner 1.0.0 (Version v1.0.0) [Computer software]. Zenodo. https://doi.org/10.5281/zenodo.23814981
+
+-----
+
+## License
 
 This project is licensed under the Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International Public License.
